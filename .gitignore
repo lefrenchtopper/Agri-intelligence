@@ -10,7 +10,11 @@ __pycache__/
 
 # Data
 data/raw/
-data/processed/
+data/processed/*
+!data/processed/
+data/processed/agmarknet/*
+!data/processed/agmarknet/
+!data/processed/agmarknet/onion_tamilnadu_weekly_2026.csv
 
 # Jupyter
 .ipynb_checkpoints/
