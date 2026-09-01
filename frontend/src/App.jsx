@@ -34,6 +34,8 @@ function App() {
   const [loadingCrops, setLoadingCrops] = useState(true);
   const [loadingWeeks, setLoadingWeeks] = useState(false);
   const [loadingPrices, setLoadingPrices] = useState(false);
+  const [loadingForecast, setLoadingForecast] = useState(false);
+  const [forecastData, setForecastData] = useState(null);
 
   const [error, setError] = useState("");
 
@@ -303,6 +305,49 @@ function App() {
     selectedMonth,
     selectedWeek,
   ]);
+
+  // ---------------------------------------------------------
+  // LOAD FORECAST UNCERTAINTY
+  // ---------------------------------------------------------
+
+  useEffect(() => {
+    if (!selectedDistrict) {
+      setForecastData(null);
+      return;
+    }
+
+    async function loadForecast() {
+      try {
+        setLoadingForecast(true);
+
+        const response = await fetch(
+          `${API_BASE}/api/v1/forecasts/${encodeURIComponent(selectedDistrict)}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Forecast unavailable");
+        }
+
+        const payload = await response.json();
+        const forecast = payload.forecast || {};
+
+        setForecastData({
+          predicted_price: Number(forecast.predicted_price ?? 0),
+          lower_bound: Number(forecast.lower_bound ?? 0),
+          upper_bound: Number(forecast.upper_bound ?? 0),
+          predicted_pct_change: Number(forecast.predicted_pct_change ?? 0),
+          volatility_regime: payload.regime || "normal",
+          spike_alert: Boolean(payload.spike_alert),
+        });
+      } catch (err) {
+        setForecastData(null);
+      } finally {
+        setLoadingForecast(false);
+      }
+    }
+
+    loadForecast();
+  }, [selectedDistrict]);
 
   // ---------------------------------------------------------
   // SELECTED CROP
@@ -814,6 +859,58 @@ function App() {
 
         </section>
 
+
+        {/* FORECAST UNCERTAINTY CARD */}
+
+        {loadingForecast && (
+          <section className="forecast-section">
+            <div className="forecast-card loading-card">
+              Loading forecast uncertainty...
+            </div>
+          </section>
+        )}
+
+        {forecastData && (
+          <section className="forecast-section">
+            <div className={`forecast-card ${forecastData.spike_alert ? "forecast-card-alert" : ""}`}>
+              <div className="forecast-header">
+                <h3>Price Forecast &amp; Calibrated Uncertainty</h3>
+                <span
+                  className={`forecast-badge ${
+                    forecastData.volatility_regime === "shock"
+                      ? "shock"
+                      : "normal"
+                  }`}
+                >
+                  {forecastData.volatility_regime} Regime
+                </span>
+              </div>
+
+              <div className="forecast-point">
+                <span>Predicted Market Price</span>
+                <strong>
+                  ₹{forecastData.predicted_price.toFixed(2)} / quintal
+                </strong>
+              </div>
+
+              <div className="forecast-band">
+                <span>Calibrated 80% Asymmetric Interval</span>
+                <strong>
+                  ₹{forecastData.lower_bound.toFixed(2)} — ₹{forecastData.upper_bound.toFixed(2)}
+                </strong>
+                <small>
+                  Upper bandwidth expanded (+₹{(forecastData.upper_bound - forecastData.predicted_price).toFixed(2)}) to capture shock-regime spikes.
+                </small>
+              </div>
+
+              {forecastData.spike_alert && (
+                <div className="forecast-warning">
+                  <span>⚠️ Warning:</span> Price shock surge detected for this period.
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* MARKET TABLE */}
 

@@ -147,6 +147,136 @@ main {
   font-size: 11px;
 }
 
+/* Forecast section */
+
+.forecast-section {
+  margin: 22px 0;
+}
+
+.forecast-card {
+  padding: 22px 24px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+}
+
+.forecast-card-alert {
+  border-color: #ef4444;
+  background: rgba(127, 29, 29, 0.18);
+}
+
+.loading-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 110px;
+  color: #cbd5e1;
+  background: #111827;
+  border-color: #1f2937;
+}
+
+.forecast-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.forecast-header h3 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 19px;
+  letter-spacing: -0.3px;
+}
+
+.forecast-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.forecast-badge.normal {
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.12);
+  color: #6ee7b7;
+}
+
+.forecast-badge.shock {
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+}
+
+.forecast-point {
+  margin-bottom: 18px;
+}
+
+.forecast-point span,
+.forecast-band span {
+  display: block;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.forecast-point strong {
+  display: block;
+  margin-top: 8px;
+  color: #f8fafc;
+  font-size: clamp(28px, 4vw, 40px);
+  letter-spacing: -0.05em;
+}
+
+.forecast-band {
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid #334155;
+}
+
+.forecast-band strong {
+  display: block;
+  margin-top: 10px;
+  color: #e2e8f0;
+  font-size: clamp(22px, 2.6vw, 30px);
+  letter-spacing: -0.04em;
+}
+
+.forecast-band small {
+  display: block;
+  margin-top: 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.forecast-warning {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  background: rgba(127, 29, 29, 0.2);
+  color: #fca5a5;
+  font-size: 14px;
+}
+
+.forecast-warning span {
+  font-weight: 800;
+}
+
 /* Table section */
 
 .table-section {
