@@ -1,27 +1,26 @@
-# Python
-__pycache__/
-*.py[cod]
-
-# Virtual environment
+# Environments & Caches
 .venv/
+env/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.log
 
-# Environment variables
+# Environment & Secret Files
 .env
+*.env
 
-# Data
+# SQLite Databases & Trained Models
+*.db
+*.sqlite3
+*.joblib
+*.pkl
+
+# Raw & Processed Data
 data/raw/
-data/processed/*
-!data/processed/
-data/processed/agmarknet/*
-!data/processed/agmarknet/
-!data/processed/agmarknet/onion_tamilnadu_weekly_2026.csv
+data/processed/
 
-# Jupyter
-.ipynb_checkpoints/
-
-# VS Code
+# IDE
 .vscode/
-
-# Operating system
-.DS_Store
-Thumbs.db
+.idea/

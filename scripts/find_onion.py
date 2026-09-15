@@ -6,22 +6,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sqlalchemy import text
 from backend.app.database import engine
 
-
 with engine.connect() as connection:
-    count = connection.execute(
-        text("SELECT COUNT(*) FROM crops")
-    ).scalar()
+    query = text("""
+        SELECT id, name, tamil_name, category
+        FROM crops
+        WHERE LOWER(name) LIKE :search_term
+           OR LOWER(tamil_name) LIKE :search_term
+        ORDER BY id
+    """)
 
-    print("Total crops:", count)
+    result = connection.execute(query, {"search_term": "%onion%"})
+    rows = result.fetchall()
 
-    result = connection.execute(
-        text("""
-            SELECT id, name, tamil_name, category
-            FROM crops
-            ORDER BY name
-            LIMIT 20
-        """)
-    )
-
-    for row in result:
-        print(row)
+    print(f"Found {len(rows)} matching crop record(s) for 'onion':\n")
+    for row in rows:
+        print(f"ID: {row.id} | Name: {row.name} | Tamil Name: {row.tamil_name} | Category: {row.category}")

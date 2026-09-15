@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, Numeric, String, Text, func
-from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy import DateTime, Integer, JSON, Numeric, String, func
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..database import Base
@@ -69,7 +69,7 @@ class Crop(Base):
     )
 
     soil_compatibility: Mapped[list[str] | None] = mapped_column(
-        ARRAY(Text),
+        JSON,
         nullable=True,
     )
 

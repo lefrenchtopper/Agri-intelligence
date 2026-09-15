@@ -1,8 +1,14 @@
-import pytest
-import pandas as pd
-from fastapi.testclient import TestClient
+import uuid
+from datetime import date
 
+import pandas as pd
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
+from backend.app.database import engine
 from backend.app.main import app
+from backend.app.models import MarketPriceWeekly
 from backend.app.routers import forecasts
 
 
@@ -68,3 +74,34 @@ def test_get_forecast_missing_file(tmp_path, monkeypatch):
     assert response.json()["detail"] == (
         "Forecast predictions not generated yet."
     )
+
+
+def test_market_weeks_accepts_uuid_string():
+    crop_id = uuid.uuid4()
+    with Session(engine) as session:
+        session.add(
+            MarketPriceWeekly(
+                crop_id=crop_id,
+                market_name="Test Market",
+                district="Coimbatore",
+                week_start=date(2026, 9, 1),
+                week_end=date(2026, 9, 7),
+                average_price_per_quintal=120.0,
+                previous_week_price=110.0,
+                previous_month_price=105.0,
+                previous_year_price=100.0,
+                change_over_previous_week_pct=9.1,
+                change_over_previous_month_pct=14.3,
+                change_over_previous_year_pct=20.0,
+            )
+        )
+        session.commit()
+
+    response = client.get(
+        "/api/market-prices/weeks",
+        params={"crop_id": str(crop_id), "district": "Coimbatore"},
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()) >= 1
+    assert response.json()[0]["year"] == 2026

@@ -1,5 +1,6 @@
-import requests
 import json
+
+import requests
 
 
 URL = "https://api.agmarknet.gov.in/v1/daily-price-arrival"
@@ -16,41 +17,40 @@ headers = {
 }
 
 
-params = {
-    "state": 31,
-    "district": 530,
-    "market": 277,
-    "commodity": 23,
-    "year": 2026,
-    "month": 8,
-}
+def main():
+    params = {
+        "state": 31,
+        "district": 530,
+        "market": 277,
+        "commodity": 23,
+        "year": 2026,
+        "month": 8,
+    }
+
+    response = requests.get(
+        URL,
+        headers=headers,
+        params=params,
+        timeout=30,
+    )
+
+    print("Status code:", response.status_code)
+
+    print("\nRequest URL:")
+    print(response.url)
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    print("\nAPI request successful.")
+
+    print("\nTop-level structure:")
+    print(data.keys())
+
+    print("\nResponse:")
+    print(json.dumps(data, indent=2, ensure_ascii=False))
 
 
-response = requests.get(
-    URL,
-    headers=headers,
-    params=params,
-    timeout=30,
-)
-
-
-print("Status code:", response.status_code)
-
-print("\nRequest URL:")
-print(response.url)
-
-response.raise_for_status()
-
-data = response.json()
-
-print("\nAPI request successful.")
-
-print("\nTop-level structure:")
-print(data.keys())
-
-print("\nResponse:")
-print(json.dumps(
-    data,
-    indent=2,
-    ensure_ascii=False
-))
+if __name__ == "__main__":
+    main()

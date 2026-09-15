@@ -1,0 +1,22 @@
+﻿version: '3.8'
+
+services:
+  fastapi-backend:
+    build: .
+    container_name: agri_fastapi_backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    restart: always
+
+  streamlit-dashboard:
+    build: .
+    container_name: agri_streamlit_dashboard
+    command: streamlit run dashboard.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://fastapi-backend:8000/predict
+    depends_on:
+      - fastapi-backend
+    restart: always

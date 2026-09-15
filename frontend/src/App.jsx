@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { debugMarketAPI } from "./apiDebug"; // <--- 1. Add this import
+import { MarketPriceChart } from "./components/MarketPriceChart";
+import { fetchFilteredMarketTable, fetchWeeklyPrices } from "./services/api";
 import "./App.css";
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = "";
 
 const MONTHS = [
   { value: 1, label: "January" },
@@ -21,6 +24,7 @@ const MONTHS = [
 function App() {
   const [crops, setCrops] = useState([]);
   const [prices, setPrices] = useState([]);
+  const [tableRecords, setTableRecords] = useState([]);
 
   const [selectedCrop, setSelectedCrop] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("Coimbatore");
@@ -60,9 +64,7 @@ function App() {
         setCrops(data);
 
         // Default to Onion
-        const onion = data.find(
-          (crop) => crop.name.toLowerCase() === "onion"
-        );
+        const onion = data.find((crop) => crop.name.toLowerCase() === "onion");
 
         if (onion) {
           setSelectedCrop(onion.id);
@@ -100,7 +102,7 @@ function App() {
         }
 
         const response = await fetch(
-          `${API_BASE}/api/market-prices/weeks?${params.toString()}`
+          `${API_BASE}/api/market-prices/weeks?${params.toString()}`,
         );
 
         if (!response.ok) {
@@ -145,9 +147,7 @@ function App() {
   // ---------------------------------------------------------
 
   const availableYears = useMemo(() => {
-    const years = [...new Set(
-      availableWeeks.map((item) => item.year)
-    )];
+    const years = [...new Set(availableWeeks.map((item) => item.year))];
 
     return years.sort((a, b) => a - b);
   }, [availableWeeks]);
@@ -161,7 +161,7 @@ function App() {
       ...new Set(
         availableWeeks
           .filter((item) => item.year === selectedYear)
-          .map((item) => item.month)
+          .map((item) => item.month),
       ),
     ];
 
@@ -174,9 +174,7 @@ function App() {
 
   const filteredWeeks = useMemo(() => {
     return availableWeeks.filter(
-      (item) =>
-        item.year === selectedYear &&
-        item.month === selectedMonth
+      (item) => item.year === selectedYear && item.month === selectedMonth,
     );
   }, [availableWeeks, selectedYear, selectedMonth]);
 
@@ -189,14 +187,10 @@ function App() {
 
     setSelectedYear(year);
 
-    const monthsForYear = availableWeeks.filter(
-      (item) => item.year === year
-    );
+    const monthsForYear = availableWeeks.filter((item) => item.year === year);
 
     const uniqueMonths = [
-      ...new Set(
-        monthsForYear.map((item) => item.month)
-      ),
+      ...new Set(monthsForYear.map((item) => item.month)),
     ].sort((a, b) => a - b);
 
     if (uniqueMonths.length > 0) {
@@ -205,7 +199,7 @@ function App() {
       setSelectedMonth(month);
 
       const weeksForMonth = monthsForYear.filter(
-        (item) => item.month === month
+        (item) => item.month === month,
       );
 
       if (weeksForMonth.length > 0) {
@@ -227,9 +221,7 @@ function App() {
     setSelectedMonth(month);
 
     const weeksForMonth = availableWeeks.filter(
-      (item) =>
-        item.year === selectedYear &&
-        item.month === month
+      (item) => item.year === selectedYear && item.month === month,
     );
 
     if (weeksForMonth.length > 0) {
@@ -248,63 +240,63 @@ function App() {
   }
 
   // ---------------------------------------------------------
-  // LOAD MARKET PRICES
+  // LOAD FULL MARKET HISTORY FOR THE TREND CHART
   // ---------------------------------------------------------
 
   useEffect(() => {
-    if (
-      !selectedCrop ||
-      !selectedYear ||
-      !selectedMonth ||
-      !selectedWeek
-    ) {
+    if (!selectedCrop || !selectedDistrict) {
       return;
     }
 
-    async function loadPrices() {
+    async function loadPriceHistory() {
       try {
-        setLoadingPrices(true);
         setError("");
 
-        const params = new URLSearchParams();
-
-        params.set("crop_id", selectedCrop);
-
-        if (selectedDistrict) {
-          params.set("district", selectedDistrict);
-        }
-
-        params.set("year", selectedYear);
-        params.set("month", selectedMonth);
-        params.set("week", selectedWeek);
-
-        const response = await fetch(
-          `${API_BASE}/api/market-prices/weekly?${params.toString()}`
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to load market prices");
-        }
-
-        const data = await response.json();
+        const data = await fetchWeeklyPrices(selectedCrop, selectedDistrict);
 
         setPrices(data);
       } catch (err) {
         setError(err.message);
         setPrices([]);
+      }
+    }
+
+    loadPriceHistory();
+  }, [selectedCrop, selectedDistrict]);
+
+  // LOAD SINGLE-WEEK RECORDS FOR THE MARKET TABLE
+  // ---------------------------------------------------------
+
+  useEffect(() => {
+    if (!selectedCrop || !selectedDistrict || !selectedYear || !selectedMonth || !selectedWeek) {
+      setTableRecords([]);
+      return;
+    }
+
+    async function loadTableRecords() {
+      try {
+        setLoadingPrices(true);
+        setError("");
+
+        const data = await fetchFilteredMarketTable({
+          crop_id: selectedCrop,
+          district: selectedDistrict,
+          year: selectedYear,
+          month: selectedMonth,
+          week: selectedWeek,
+        });
+
+        setTableRecords(data);
+      } catch (err) {
+        setError(err.message);
+        setTableRecords([]);
       } finally {
         setLoadingPrices(false);
       }
     }
 
-    loadPrices();
-  }, [
-    selectedCrop,
-    selectedDistrict,
-    selectedYear,
-    selectedMonth,
-    selectedWeek,
-  ]);
+    loadTableRecords();
+  }, [selectedCrop, selectedDistrict, selectedYear, selectedMonth, selectedWeek]);
 
   // ---------------------------------------------------------
   // LOAD FORECAST UNCERTAINTY
@@ -321,7 +313,7 @@ function App() {
         setLoadingForecast(true);
 
         const response = await fetch(
-          `${API_BASE}/api/v1/forecasts/${encodeURIComponent(selectedDistrict)}`
+          `${API_BASE}/api/v1/forecasts/${encodeURIComponent(selectedDistrict)}`,
         );
 
         if (!response.ok) {
@@ -354,9 +346,7 @@ function App() {
   // ---------------------------------------------------------
 
   const selectedCropData = useMemo(() => {
-    return crops.find(
-      (crop) => crop.id === selectedCrop
-    );
+    return crops.find((crop) => crop.id === selectedCrop);
   }, [crops, selectedCrop]);
 
   // ---------------------------------------------------------
@@ -364,11 +354,7 @@ function App() {
   // ---------------------------------------------------------
 
   const selectedMonthName = useMemo(() => {
-    return (
-      MONTHS.find(
-        (month) => month.value === selectedMonth
-      )?.label || ""
-    );
+    return MONTHS.find((month) => month.value === selectedMonth)?.label || "";
   }, [selectedMonth]);
 
   // ---------------------------------------------------------
@@ -377,30 +363,23 @@ function App() {
 
   const currentDateRange = useMemo(() => {
     const selectedWeekData = filteredWeeks.find(
-      (item) => item.week === selectedWeek
+      (item) => item.week === selectedWeek,
     );
 
     if (!selectedWeekData) {
       return null;
     }
 
-    const startDate = new Date(
-      `${selectedWeekData.week_start}T00:00:00`
-    );
+    const startDate = new Date(`${selectedWeekData.week_start}T00:00:00`);
 
-    const endDate = new Date(
-      `${selectedWeekData.week_end}T00:00:00`
-    );
+    const endDate = new Date(`${selectedWeekData.week_end}T00:00:00`);
 
     const startDay = startDate.getDate();
     const endDay = endDate.getDate();
 
-    const monthName = startDate.toLocaleDateString(
-      "en-IN",
-      {
-        month: "long",
-      }
-    );
+    const monthName = startDate.toLocaleDateString("en-IN", {
+      month: "long",
+    });
 
     return `${startDay}–${endDay} ${monthName} ${startDate.getFullYear()}`;
   }, [filteredWeeks, selectedWeek]);
@@ -410,7 +389,7 @@ function App() {
   // ---------------------------------------------------------
 
   const statistics = useMemo(() => {
-    if (prices.length === 0) {
+    if (tableRecords.length === 0) {
       return {
         average: 0,
         highest: null,
@@ -419,24 +398,19 @@ function App() {
     }
 
     const average =
-      prices.reduce(
-        (sum, price) =>
-          sum + price.average_price_per_quintal,
-        0
-      ) / prices.length;
+      tableRecords.reduce((sum, price) => sum + price.average_price_per_quintal, 0) /
+      tableRecords.length;
 
-    const highest = prices.reduce((max, price) =>
-      price.average_price_per_quintal >
-      max.average_price_per_quintal
+    const highest = tableRecords.reduce((max, price) =>
+      price.average_price_per_quintal > max.average_price_per_quintal
         ? price
-        : max
+        : max,
     );
 
-    const lowest = prices.reduce((min, price) =>
-      price.average_price_per_quintal <
-      min.average_price_per_quintal
+    const lowest = tableRecords.reduce((min, price) =>
+      price.average_price_per_quintal < min.average_price_per_quintal
         ? price
-        : min
+        : min,
     );
 
     return {
@@ -444,7 +418,7 @@ function App() {
       highest,
       lowest,
     };
-  }, [prices]);
+  }, [tableRecords]);
 
   // ---------------------------------------------------------
   // FORMAT PRICE
@@ -489,239 +463,141 @@ function App() {
 
   return (
     <div className="dashboard">
-
       <header className="header">
         <div>
-          <div className="brand">
-            AGRI-INTELLIGENCE
-          </div>
+          <div className="brand">AGRI-INTELLIGENCE</div>
 
-          <div className="subtitle">
-            Agricultural Decision Support System
-          </div>
+          <div className="subtitle">Agricultural Decision Support System</div>
         </div>
 
-        <div className="location">
-          Coimbatore, Tamil Nadu
-        </div>
+        <div className="location">Coimbatore, Tamil Nadu</div>
       </header>
 
-
       <main>
-
         {/* HERO */}
 
         <section className="hero-section">
+          <div className="section-label">MARKET ANALYSIS</div>
 
-          <div className="section-label">
-            MARKET ANALYSIS
-          </div>
-
-          <h1>
-            Weekly Wholesale Market Prices
-          </h1>
+          <h1>Weekly Wholesale Market Prices</h1>
 
           <p className="description">
-
             {selectedCropData
               ? `${selectedCropData.name} · Coimbatore, Tamil Nadu · ${
-                  currentDateRange ||
-                  `${selectedMonthName} ${selectedYear}`
+                  currentDateRange || `${selectedMonthName} ${selectedYear}`
                 }`
               : "Loading market data..."}
-
           </p>
-
         </section>
-
 
         {/* FILTERS */}
 
         <section className="filters">
-
           {/* COMMODITY */}
 
           <div className="filter">
-
-            <label>
-              Commodity
-            </label>
+            <label>Commodity</label>
 
             <select
               value={selectedCrop}
-              onChange={(event) =>
-                setSelectedCrop(event.target.value)
-              }
+              onChange={(event) => setSelectedCrop(event.target.value)}
               disabled={loadingCrops}
             >
-
               {loadingCrops ? (
-                <option>
-                  Loading...
-                </option>
+                <option>Loading...</option>
               ) : (
                 crops.map((crop) => (
-                  <option
-                    key={crop.id}
-                    value={crop.id}
-                  >
+                  <option key={crop.id} value={crop.id}>
                     {crop.name}
                   </option>
                 ))
               )}
-
             </select>
-
           </div>
-
 
           {/* STATE */}
 
           <div className="filter">
-
-            <label>
-              State / UT
-            </label>
+            <label>State / UT</label>
 
             <select defaultValue="Tamil Nadu">
-              <option>
-                Tamil Nadu
-              </option>
+              <option>Tamil Nadu</option>
             </select>
-
           </div>
-
 
           {/* DISTRICT */}
 
           <div className="filter">
-
-            <label>
-              District
-            </label>
+            <label>District</label>
 
             <select
               value={selectedDistrict}
-              onChange={(event) =>
-                setSelectedDistrict(
-                  event.target.value
-                )
-              }
+              onChange={(event) => setSelectedDistrict(event.target.value)}
             >
-
-              <option>
-                Coimbatore
-              </option>
-
+              <option>Coimbatore</option>
             </select>
-
           </div>
-
 
           {/* YEAR */}
 
           <div className="filter">
-
-            <label>
-              Year
-            </label>
+            <label>Year</label>
 
             <select
               value={selectedYear}
               onChange={handleYearChange}
-              disabled={
-                loadingWeeks ||
-                availableYears.length === 0
-              }
+              disabled={loadingWeeks || availableYears.length === 0}
             >
-
               {availableYears.length === 0 ? (
-                <option value="">
-                  —
-                </option>
+                <option value="">—</option>
               ) : (
                 availableYears.map((year) => (
-                  <option
-                    key={year}
-                    value={year}
-                  >
+                  <option key={year} value={year}>
                     {year}
                   </option>
                 ))
               )}
-
             </select>
-
           </div>
-
 
           {/* MONTH */}
 
           <div className="filter">
-
-            <label>
-              Month
-            </label>
+            <label>Month</label>
 
             <select
               value={selectedMonth}
               onChange={handleMonthChange}
-              disabled={
-                loadingWeeks ||
-                availableMonths.length === 0
-              }
+              disabled={loadingWeeks || availableMonths.length === 0}
             >
-
               {availableMonths.length === 0 ? (
-                <option value="">
-                  —
-                </option>
+                <option value="">—</option>
               ) : (
                 availableMonths.map((month) => {
-
-                  const monthData =
-                    MONTHS.find(
-                      (item) =>
-                        item.value === month
-                    );
+                  const monthData = MONTHS.find((item) => item.value === month);
 
                   return (
-                    <option
-                      key={month}
-                      value={month}
-                    >
+                    <option key={month} value={month}>
                       {monthData?.label}
                     </option>
                   );
                 })
               )}
-
             </select>
-
           </div>
-
 
           {/* WEEK */}
 
           <div className="filter">
-
-            <label>
-              Week
-            </label>
+            <label>Week</label>
 
             <select
               value={selectedWeek}
               onChange={handleWeekChange}
-              disabled={
-                loadingWeeks ||
-                filteredWeeks.length === 0
-              }
+              disabled={loadingWeeks || filteredWeeks.length === 0}
             >
-
               {filteredWeeks.length === 0 ? (
-                <option value="">
-                  —
-                </option>
+                <option value="">—</option>
               ) : (
                 filteredWeeks.map((item) => (
                   <option
@@ -732,133 +608,73 @@ function App() {
                   </option>
                 ))
               )}
-
             </select>
-
           </div>
-
         </section>
-
 
         {/* ERROR */}
 
-        {error && (
-          <div className="error">
-            {error}
-          </div>
-        )}
-
+        {error && <div className="error">{error}</div>}
 
         {/* NO DATA */}
 
-        {!loadingPrices &&
-          prices.length === 0 &&
-          !error && (
-            <div className="no-data">
-              No market data available for this selection.
-            </div>
-          )}
-
+        {!loadingPrices && tableRecords.length === 0 && !error && (
+          <div className="no-data">
+            No market data available for this selection.
+          </div>
+        )}
 
         {/* STATISTICS */}
 
         <section className="stats">
-
           <div className="stat-card">
+            <span>Markets</span>
 
-            <span>
-              Markets
-            </span>
-
-            <strong>
-              {loadingPrices
-                ? "—"
-                : prices.length}
-            </strong>
-
+            <strong>{loadingPrices ? "—" : tableRecords.length}</strong>
           </div>
 
-
           <div className="stat-card">
-
-            <span>
-              Average Price
-            </span>
+            <span>Average Price</span>
 
             <strong>
-
               {loadingPrices
                 ? "—"
-                : prices.length > 0
-                  ? formatPrice(
-                      statistics.average
-                    )
+                : tableRecords.length > 0
+                  ? formatPrice(statistics.average)
                   : "—"}
-
             </strong>
 
-            <small>
-              per quintal (100 kg)
-            </small>
-
+            <small>per quintal (100 kg)</small>
           </div>
 
-
           <div className="stat-card">
-
-            <span>
-              Highest Price
-            </span>
+            <span>Highest Price</span>
 
             <strong>
-
-              {loadingPrices ||
-              !statistics.highest
+              {loadingPrices || !statistics.highest
                 ? "—"
-                : formatPrice(
-                    statistics.highest
-                      .average_price_per_quintal
-                  )}
-
+                : formatPrice(statistics.highest.average_price_per_quintal)}
             </strong>
 
             {statistics.highest && (
-              <small>
-                {statistics.highest.market_name}
-              </small>
+              <small>{statistics.highest.market_name}</small>
             )}
-
           </div>
 
-
           <div className="stat-card">
-
-            <span>
-              Lowest Price
-            </span>
+            <span>Lowest Price</span>
 
             <strong>
-
-              {loadingPrices ||
-              !statistics.lowest
+              {loadingPrices || !statistics.lowest
                 ? "—"
-                : formatPrice(
-                    statistics.lowest
-                      .average_price_per_quintal
-                  )}
-
+                : formatPrice(statistics.lowest.average_price_per_quintal)}
             </strong>
 
             {statistics.lowest && (
-              <small>
-                {statistics.lowest.market_name}
-              </small>
+              <small>{statistics.lowest.market_name}</small>
             )}
-
           </div>
-
         </section>
-
 
         {/* FORECAST UNCERTAINTY CARD */}
 
@@ -872,7 +688,9 @@ function App() {
 
         {forecastData && (
           <section className="forecast-section">
-            <div className={`forecast-card ${forecastData.spike_alert ? "forecast-card-alert" : ""}`}>
+            <div
+              className={`forecast-card ${forecastData.spike_alert ? "forecast-card-alert" : ""}`}
+            >
               <div className="forecast-header">
                 <h3>Price Forecast &amp; Calibrated Uncertainty</h3>
                 <span
@@ -896,80 +714,75 @@ function App() {
               <div className="forecast-band">
                 <span>Calibrated 80% Asymmetric Interval</span>
                 <strong>
-                  ₹{forecastData.lower_bound.toFixed(2)} — ₹{forecastData.upper_bound.toFixed(2)}
+                  ₹{forecastData.lower_bound.toFixed(2)} — ₹
+                  {forecastData.upper_bound.toFixed(2)}
                 </strong>
                 <small>
-                  Upper bandwidth expanded (+₹{(forecastData.upper_bound - forecastData.predicted_price).toFixed(2)}) to capture shock-regime spikes.
+                  Upper bandwidth expanded (+₹
+                  {(
+                    forecastData.upper_bound - forecastData.predicted_price
+                  ).toFixed(2)}
+                  ) to capture shock-regime spikes.
                 </small>
               </div>
 
               {forecastData.spike_alert && (
                 <div className="forecast-warning">
-                  <span>⚠️ Warning:</span> Price shock surge detected for this period.
+                  <span>⚠️ Warning:</span> Price shock surge detected for this
+                  period.
                 </div>
               )}
             </div>
           </section>
         )}
 
+        <MarketPriceChart
+          prices={prices}
+          forecast={
+            forecastData
+              ? {
+                  district: selectedDistrict,
+                  spike_alert: forecastData.spike_alert,
+                  forecast: {
+                    predicted_price: forecastData.predicted_price,
+                    predicted_pct_change: forecastData.predicted_pct_change,
+                  },
+                }
+              : null
+          }
+        />
+
         {/* MARKET TABLE */}
 
         <section className="market-section">
+          <div className="section-label">MARKET-WISE DATA</div>
 
-          <div className="section-label">
-            MARKET-WISE DATA
-          </div>
-
-          <h2>
-            Wholesale Prices for{" "}
-            {selectedCropData?.name || "Crop"}
-          </h2>
+          <h2>Wholesale Prices for {selectedCropData?.name || "Crop"}</h2>
 
           <p className="date-range">
-            {currentDateRange ||
-              "No data available"}
+            {currentDateRange || "No data available"}
           </p>
 
-
           {loadingPrices ? (
-
-            <div className="loading">
-              Loading market prices...
-            </div>
-
-          ) : prices.length > 0 ? (
-
+            <div className="loading">Loading market prices...</div>
+          ) : tableRecords.length > 0 ? (
             <div className="table-wrapper">
-
               <table>
-
                 <thead>
-
                   <tr>
-
-                    <th>
-                      Market
-                    </th>
+                    <th>Market</th>
 
                     <th>
                       Price
                       <br />
-                      <span>
-                        {currentDateRange}
-                      </span>
+                      <span>{currentDateRange}</span>
                     </th>
 
-                    <th>
-                      Previous Week
-                    </th>
+                    <th>Previous Week</th>
 
-                    <th>
-                      Previous Month
-                    </th>
+                    <th>Previous Month</th>
 
-                    <th>
-                      Previous Year
-                    </th>
+                    <th>Previous Year</th>
 
                     <th>
                       Change
@@ -988,111 +801,71 @@ function App() {
                       <br />
                       Previous Year
                     </th>
-
                   </tr>
-
                 </thead>
 
-
                 <tbody>
-
-                  {prices.map((price) => (
-
+                  {tableRecords.map((price) => (
                     <tr key={price.id}>
+                      <td>{price.market_name}</td>
 
-                      <td>
-                        {price.market_name}
-                      </td>
-
-                      <td>
-                        {formatPrice(
-                          price.average_price_per_quintal
-                        )}
-                      </td>
+                      <td>{formatPrice(price.average_price_per_quintal)}</td>
 
                       <td>
                         {price.previous_week_price !== null
-                          ? formatPrice(
-                              price.previous_week_price
-                            )
+                          ? formatPrice(price.previous_week_price)
                           : "—"}
                       </td>
 
                       <td>
                         {price.previous_month_price !== null
-                          ? formatPrice(
-                              price.previous_month_price
-                            )
+                          ? formatPrice(price.previous_month_price)
                           : "—"}
                       </td>
 
                       <td>
                         {price.previous_year_price !== null
-                          ? formatPrice(
-                              price.previous_year_price
-                            )
+                          ? formatPrice(price.previous_year_price)
                           : "—"}
                       </td>
 
                       <td
                         className={getChangeClass(
-                          price.change_over_previous_week_pct
+                          price.change_over_previous_week_pct,
                         )}
                       >
-                        {formatChange(
-                          price.change_over_previous_week_pct
-                        )}
+                        {formatChange(price.change_over_previous_week_pct)}
                       </td>
 
                       <td
                         className={getChangeClass(
-                          price.change_over_previous_month_pct
+                          price.change_over_previous_month_pct,
                         )}
                       >
-                        {formatChange(
-                          price.change_over_previous_month_pct
-                        )}
+                        {formatChange(price.change_over_previous_month_pct)}
                       </td>
 
                       <td
                         className={getChangeClass(
-                          price.change_over_previous_year_pct
+                          price.change_over_previous_year_pct,
                         )}
                       >
-                        {formatChange(
-                          price.change_over_previous_year_pct
-                        )}
+                        {formatChange(price.change_over_previous_year_pct)}
                       </td>
-
                     </tr>
-
                   ))}
-
                 </tbody>
-
               </table>
-
             </div>
-
           ) : null}
-
         </section>
-
       </main>
 
-
       <footer>
+        <span>Agri-Intelligence</span>
 
-        <span>
-          Agri-Intelligence
-        </span>
-
-        <span>
-          Market data · Coimbatore · ₹/quintal (100 kg)
-        </span>
-
+        <span>Market data · Coimbatore · ₹/quintal (100 kg)</span>
       </footer>
-
     </div>
   );
 }
